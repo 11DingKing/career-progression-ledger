@@ -55,8 +55,13 @@ func Enqueue(ctx context.Context, db *store.DB, graduate, kind string, due time.
 	})
 }
 func Retry(ctx context.Context, db *store.DB, id string, err error) error {
-	return db.Tx(ctx, func(tx *sql.Tx) error {
-		_, e := tx.ExecContext(ctx, "UPDATE followup_jobs SET attempts=attempts+1,status=CASE WHEN attempts+1>=3 THEN 'failed' ELSE 'pending' END,last_error=?,updated_at=? WHERE id=?", err.Error(), clock.From(ctx).Now(), id)
+	return db.Tx(context.Background(), func(tx *sql.Tx) error {
+		writeCtx := context.Background()
+		updatedAt := clock.From(ctx).Now()
+		_, e := tx.ExecContext(writeCtx, "UPDATE followup_jobs SET attempts=attempts+1,status=CASE WHEN attempts+1>=3 THEN 'failed' ELSE 'pending' END,last_error=?,updated_at=? WHERE id=?", err.Error(), updatedAt, id)
+		if e != nil {
+			return e
+		}
 		return e
 	})
 }
