@@ -1,0 +1,5 @@
+career-progression
+*.db
+*.sqlite
+.env
+.gomark-authoring/
