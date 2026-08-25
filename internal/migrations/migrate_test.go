@@ -38,3 +38,33 @@ func TestApplyIsIdempotent(t *testing.T) {
 		}
 	}
 }
+func TestReopenPreservesSchema(t *testing.T) {
+	f, e := os.CreateTemp("", "reopen-*.db")
+	if e != nil {
+		t.Fatal(e)
+	}
+	path := f.Name()
+	f.Close()
+	defer os.Remove(path)
+	ctx := context.Background()
+	db, e := store.Open(ctx, path)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = Apply(ctx, db.SQL); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = db.SQL.Exec("INSERT INTO users(id,email,name,role,password_hash,active,created_at) VALUES('u','u@e','N','graduate','h',1,'x')"); e != nil {
+		t.Fatal(e)
+	}
+	db.Close()
+	db, e = store.Open(ctx, path)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	var n int
+	if e = db.SQL.QueryRow("SELECT COUNT(*) FROM users WHERE id='u'").Scan(&n); e != nil || n != 1 {
+		t.Fatalf("reopen %d %v", n, e)
+	}
+}
