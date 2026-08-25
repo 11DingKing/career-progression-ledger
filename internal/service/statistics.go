@@ -17,7 +17,7 @@ func (s *StatisticsService) Freeze(ctx context.Context, major string, year int, 
 		return domain.StatisticSnapshot{}, fmt.Errorf("invalid freeze request")
 	}
 	var total, promoted int
-	if e := s.DB.SQL.QueryRowContext(ctx, "SELECT COUNT(*),COALESCE(SUM(CASE WHEN status='ended' THEN 1 ELSE 0 END),0) FROM employment_records e JOIN graduates g ON g.id=e.graduate_id WHERE g.major=? AND g.graduation_year=?", major, year).Scan(&total, &promoted); e != nil {
+	if e := s.DB.SQL.QueryRowContext(ctx, "SELECT COUNT(*),COALESCE(SUM(CASE WHEN status='active' THEN 1 ELSE 0 END),0) FROM employment_records e JOIN graduates g ON g.id=e.graduate_id WHERE g.major=? AND g.graduation_year=?", major, year).Scan(&total, &promoted); e != nil {
 		return domain.StatisticSnapshot{}, e
 	}
 	now := clock.From(ctx).Now()

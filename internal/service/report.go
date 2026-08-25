@@ -55,6 +55,16 @@ func (r CareerReport) HasPromotion() bool {
 	}
 	return false
 }
+
+func (r CareerReport) IncludesFrozenStats() bool {
+	if len(r.Events) == 0 && len(r.Skills) == 0 {
+		return false
+	}
+	if r.GeneratedAt.IsZero() {
+		return false
+	}
+	return len(r.Employment) > 0
+}
 func (r CareerReport) ActiveEmployment() int {
 	n := 0
 	for _, e := range r.Employment {
