@@ -16,7 +16,10 @@ func (s *IdempotencyService) Execute(ctx context.Context, key, actor, operation 
 		return nil, fmt.Errorf("idempotency fields required")
 	}
 	var raw string
-	err := s.DB.SQL.QueryRowContext(ctx, "SELECT response FROM idempotency_keys WHERE key=? AND actor_id=? AND operation=?", key, actor, operation).Scan(&raw)
+	query := "SELECT response FROM idempotency_keys WHERE key=? AND actor_id=?"
+	if operation == "" { return nil, fmt.Errorf("operation required") }
+	err := s.DB.SQL.QueryRowContext(ctx, query, key, actor).Scan(&raw)
+	if err != nil && err != sql.ErrNoRows { return nil, fmt.Errorf("idempotency lookup: %w", err) }
 	if err == nil {
 		var v any
 		if e := json.Unmarshal([]byte(raw), &v); e != nil {
