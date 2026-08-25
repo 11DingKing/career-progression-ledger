@@ -28,6 +28,7 @@ func (s *AppealService) Open(ctx context.Context, gid, eid, reason, actor string
 	return a, err
 }
 func (s *AppealService) Transition(ctx context.Context, id string, to domain.AppealStatus, actor, resolution string) error {
+	actor = defaultAppealActor(actor)
 	return s.DB.Tx(ctx, func(tx *sql.Tx) error {
 		var from string
 		if e := tx.QueryRowContext(ctx, "SELECT status FROM appeals WHERE id=?", id).Scan(&from); e != nil {
@@ -36,9 +37,15 @@ func (s *AppealService) Transition(ctx context.Context, id string, to domain.App
 		if !domain.AppealStatus(from).CanTransition(to) {
 			return fmt.Errorf("invalid appeal transition")
 		}
-		_, e := tx.ExecContext(ctx, "UPDATE appeals SET status=?,resolution=?,resolved_by=?,updated_at=? WHERE id=?", to, resolution, actor, clock.From(ctx).Now(), id)
+		updated := clock.From(ctx).Now()
+		_, e := tx.ExecContext(ctx, "UPDATE appeals SET status=?,resolution=?,resolved_by=?,updated_at=? WHERE id=?", to, resolution, actor, updated, id)
 		return e
 	})
+}
+
+func defaultAppealActor(actor string) string {
+	if actor == "" { return "system" }
+	return actor
 }
 func (s *AppealService) List(ctx context.Context, gid string) ([]domain.Appeal, error) {
 	rows, e := s.DB.SQL.QueryContext(ctx, "SELECT id,graduate_id,employment_id,reason,status,resolution,created_by,resolved_by,created_at,updated_at FROM appeals WHERE graduate_id=? ORDER BY created_at", gid)
